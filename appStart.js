@@ -102,7 +102,7 @@ function nextAction() {
 		message: "What would you like to do next?",
 		type: "list",
 		name: "nextAction",
-		choices: ["Add More Items", "Remove Items", "Alter Item Amount", "Survey Cart", "Checkout"]
+		choices: ["Add More Items", "Remove Items", "Alter Item Order Amount", "Survey Cart", "Checkout"]
 	})
 		.then(function (actionAnswer) {
 			switch (actionAnswer.nextAction) {
@@ -278,9 +278,11 @@ function alterItem() {
 					var sC = shoppingCart[i];
 					if (sC.product_name === alterQ.alterItem) {
 						if (sC.maxQTY < alterQ.newQTY){
-							console.log("You are trying to order more items than are available.  \nYou tried to order " + alterQ.newQTY + " and there are only " + sC.maxQTY + " available.")
+							console.log("You are trying to order more items than are available.  \nYou tried to order " + alterQ.newQTY + " and there are only " + sC.maxQTY + " " + sC.product_name + " available.  Process terminated.")
 							return nextAction();
 						}
+						 sC.purchaseQTY = alterQ.newQTY;
+						 console.log(sC);
 					}
 				}
 				// get more input from the user
@@ -292,4 +294,4 @@ function alterItem() {
 		console.log("We can't alter items in your cart because your cart is empty");
 		nextAction();
 	}
-}
+};
