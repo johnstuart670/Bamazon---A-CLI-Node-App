@@ -7,6 +7,7 @@ var choiceArray = [];
 var dbArray = [];
 var shoppingCart = [];
 var chosenItem = "";
+var cartPrice = 0;
 
 // mySql connection so we can use the database we are referencing.
 var connection = mysql.createConnection({
@@ -59,7 +60,7 @@ function start() {
 				// Prompt the user for how many items they want to buy and tell the max qty
 				inquirer.prompt(
 					{
-						message: "How many " + chosenItem.product_name + " would you like to buy at $ " +chosenItem.PRICE_CUSTOMER +"?  \n You can purchase up to " + chosenItem.STOCK_QTY + "Or you can enter 'Quit' to quit",
+						message: "How many " + chosenItem.product_name + " would you like to buy at $ " +chosenItem.PRICE_CUSTOMER +"?  \n You can purchase up to " + chosenItem.STOCK_QTY,
 						name: "purchaseQTY",
 						type: "input",
 						validate: function (purchaseQTY) {
@@ -78,12 +79,16 @@ function start() {
 						}
 					}
 				).then(function(answer){
-					// we then push the shopping cart with the item quantity
+					// we then push the shopping cart with the item and the purchase qty and update the cartPrice tool
+					cartPrice += (chosenItem.PRICE_CUSTOMER*answer.purchaseQTY);
 					shoppingCart.push({
 						product_name: chosenItem.product_name,
 						purchaseQTY: answer.purchaseQTY,
-						price_customer: chosenItem.PRICE_CUSTOMER
-					})
+						price_customer: chosenItem.PRICE_CUSTOMER,
+						cartPrice: parseFloat(this.purchaseQTY*this.price_customer)
+					});
+					// and inquire if the user is done shopping.
+					shoppingCartConfirm();
 				})
 
 				connection.end()
@@ -93,17 +98,68 @@ function start() {
 
 start();
 
+// function that checks if the user is ready to checkout
 function shoppingCartConfirm(){
 	inquirer.prompt(
 		{
 			message: "Are you ready to checkout?",
 			type: "confirm",
-			default: "N"
+			default: "N",
+			name: "confirm"
 		}
 	)
+	.then(function(shoppingQ){
+		// if user is ready, then run the checkout function
+if (shoppingQ.confirm){
+	return	checkoutFunction();
 }
+// otherwise start confirm what they want to do next
+nextAction();
+		})
+	};
+
+	function checkoutFunction(){
+	// loop through the items in the shoppingCart array and log out the 
+	console.log("ALL ITEMS IN SHOPPING CART");
+	console.log("-----------------------------")
+	for (var i = 0; i < shoppingCart.length; i++){
+		shoppingCart[i] = sC
+		console.log("ITEM " + i + " IN CART: " + sC.product_name);
+		console.log("QTY: " + sC.purchaseQTY + " @ " + sC.price_customer + " = $" + sC.cartPrice );
+		console.log("-----------------------------");
+	}
+	console.log("TOTAL PRICE OF CART : $" + parseFloat(cartPrice));
+verifyCheckout();
+}
+// checkout function
+function verifyCheckout(){
+	inquirer.prompt({
+		name: "verify",
+		message: "ARE YOU READY TO CHECKOUT?",
+		type: "confirm",
+		default: "Y"
+	})
+	.then(function(checkoutAnswer){
+		if (checkoutAnswer){
+			console.log("$" + cartPrice + " ORDER CONFIRMED WITH " + shoppingCart.length + "ITEMS");
+			console.log("THANK YOU FOR YOUR BUSINESS, SESSION TERMINATED");
+			return connection.end();
+		}
+
+	})
+}
+
+cancelItem
 	// then we will run a new inquirer prompt off the answer, using data from the first inquirer prompt and data validation from joi
 // 	}.then(inquirer.prompt(answers, 
+// function that removes the item from the array at the index point requested.
+Array.prototype.remove = function(from, to) {
+  var rest = this.slice((to || from) + 1 || this.length);
+  this.length = from < 0 ? this.length + from : from;
+  return this.push.apply(this, rest);
+};
+
+function nextAction();
 
 // 		connection.query("SELECT * FROM bamazon_products WHERE ? like ?", function (error, results){
 // 		[{product_name: answer.item}],
