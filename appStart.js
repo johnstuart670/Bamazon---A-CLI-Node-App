@@ -21,6 +21,9 @@ var connection = mysql.createConnection({
 	password: "",
 	database: "bamazon_DB"
 });
+// this boots up the functions at the start of the node app
+start();
+
 
 // do an inquirer prompt set that is our start function
 function start() {
@@ -35,7 +38,7 @@ function start() {
 		inquirer.prompt({
 			message: "What item would you like to purchase?",
 			name: "item",
-			type: "rawlist",
+			type: "list",
 			choices: function () {
 				// empty our arrays and placeholders
 				choiceArray = [];
@@ -60,13 +63,13 @@ function start() {
 				// Prompt the user for how many items they want to buy and tell the max qty
 				inquirer.prompt(
 					{
-						message: "How many " + chosenItem.product_name + " would you like to buy at $ " +chosenItem.PRICE_CUSTOMER +"?  \n You can purchase up to " + chosenItem.STOCK_QTY,
+						message: "How many " + chosenItem.product_name + " would you like to buy at $ " + chosenItem.PRICE_CUSTOMER + "?  \n You can purchase up to " + chosenItem.STOCK_QTY,
 						name: "purchaseQTY",
 						type: "input",
 						validate: function (purchaseQTY) {
 							// use the Joi APY to validate that the input is a number, more than 1 and no less than the stock qty
 							var valid;
-							 Joi.validate(purchaseQTY, Joi.number().required().min(1).max(parseInt(chosenItem.STOCK_QTY)), function (validateError, val) {
+							Joi.validate(purchaseQTY, Joi.number().required().min(1).max(parseInt(chosenItem.STOCK_QTY)), function (validateError, val) {
 								if (validateError) {
 									console.log(validateError.message);
 									valid = validateError.message;
@@ -78,28 +81,56 @@ function start() {
 							return valid;
 						}
 					}
-				).then(function(answer){
+				).then(function (answer) {
 					// we then push the shopping cart with the item and the purchase qty and update the cartPrice tool
-					cartPrice += (chosenItem.PRICE_CUSTOMER*answer.purchaseQTY);
+					cartPrice += (chosenItem.PRICE_CUSTOMER * answer.purchaseQTY);
 					shoppingCart.push({
 						product_name: chosenItem.product_name,
-						purchaseQTY: answer.purchaseQTY,
-						price_customer: chosenItem.PRICE_CUSTOMER,
-						cartPrice: parseFloat(this.purchaseQTY*this.price_customer)
+						purchaseQTY: parseInt(answer.purchaseQTY),
+						price_customer: parseFloat(chosenItem.PRICE_CUSTOMER),
+						maxQTY: parseInt(chosenItem.STOCK_QTY)
 					});
-					// and inquire if the user is done shopping.
-					shoppingCartConfirm();
+					// and inquire what the user wants to do next.
+					nextAction();
 				})
-
-				connection.end()
 			})
 	})
 };
-
-start();
+// evaluate what the user wants to do next
+function nextAction() {
+	inquirer.prompt({
+		message: "What would you like to do next?",
+		type: "list",
+		name: "nextAction",
+		choices: ["Add More Items", "Remove Items", "Alter Item Amount", "Survey Cart", "Checkout"]
+	})
+		.then(function (actionAnswer) {
+			switch (actionAnswer.nextAction) {
+				case "Add More Items":
+					// go to selection function
+					start();
+					break;
+				case "Remove Items":
+					// go to the removal function
+					removeItem();
+					break;
+				case "Checkout":
+					// go to the checkout tree;
+					verifyCheckout();
+					break;
+				case "Alter Item Order Amount":
+					alterItem();
+					break;
+				case "Survey Cart":
+					checkoutFunction();
+					break;
+				default: console.log("how did you get here?")
+			}
+		})
+};
 
 // function that checks if the user is ready to checkout
-function shoppingCartConfirm(){
+function shoppingCartConfirm() {
 	inquirer.prompt(
 		{
 			message: "Are you ready to checkout?",
@@ -108,73 +139,157 @@ function shoppingCartConfirm(){
 			name: "confirm"
 		}
 	)
-	.then(function(shoppingQ){
-		// if user is ready, then run the checkout function
-if (shoppingQ.confirm){
-	return	checkoutFunction();
-}
-// otherwise start confirm what they want to do next
-nextAction();
+		.then(function (shoppingQ) {
+			// if user is ready, then run the checkout function
+			if (shoppingQ.confirm) {
+				return checkoutFunction();
+			}
+			// otherwise start confirm what they want to do next
+			nextAction();
 		})
-	};
+};
 
-	function checkoutFunction(){
+function checkoutFunction() {
 	// loop through the items in the shoppingCart array and log out the 
 	console.log("ALL ITEMS IN SHOPPING CART");
 	console.log("-----------------------------")
-	for (var i = 0; i < shoppingCart.length; i++){
-		shoppingCart[i] = sC
-		console.log("ITEM " + i + " IN CART: " + sC.product_name);
-		console.log("QTY: " + sC.purchaseQTY + " @ " + sC.price_customer + " = $" + sC.cartPrice );
+	for (var i = 0; i < shoppingCart.length; i++) {
+		var sC = shoppingCart[i];
+		var sCPrice = sC.purchaseQTY * sC.price_customer
+		console.log("ITEM " + (i + 1) + " IN CART: " + sC.product_name);
+		console.log("QTY: " + sC.purchaseQTY + " @ " + sC.price_customer + " = $" + sCPrice);
 		console.log("-----------------------------");
 	}
 	console.log("TOTAL PRICE OF CART : $" + parseFloat(cartPrice));
-verifyCheckout();
+	verifyCheckout();
 }
 // checkout function
-function verifyCheckout(){
-	inquirer.prompt({
-		name: "verify",
-		message: "ARE YOU READY TO CHECKOUT?",
-		type: "confirm",
-		default: "Y"
-	})
-	.then(function(checkoutAnswer){
-		if (checkoutAnswer){
-			console.log("$" + cartPrice + " ORDER CONFIRMED WITH " + shoppingCart.length + "ITEMS");
-			console.log("THANK YOU FOR YOUR BUSINESS, SESSION TERMINATED");
-			return connection.end();
-		}
+function verifyCheckout() {
+	if (shoppingCart.length > 0) {
+		inquirer.prompt({
+			name: "verify",
+			message: "ARE YOU READY TO CHECKOUT?",
+			type: "confirm",
+			default: "Y"
+		})
+			.then(function (checkoutAnswer) {
+				if (checkoutAnswer.verify) {
+					console.log("$" + cartPrice + " ORDER CONFIRMED WITH " + shoppingCart.length + "ITEMS");
+					// loop through shopping cart items and update the item quantities in mySQL database
 
-	})
+
+
+					console.log("THANK YOU FOR YOUR BUSINESS, SESSION TERMINATED");
+
+					return connection.end();
+				}
+				nextAction();
+			})
+	} else {
+		console.log("Your shopping cart is empty, you can't check out at this time.");
+		nextAction();
+	}
+}
+// function that allows user to remove items from the array if there are items listed in it
+function removeItem() {
+	// if there are any items in the shoppingCart Array
+	if (shoppingCart.length > 0) {
+		// prompt to figure out what item they want to remove 
+		inquirer.prompt({
+			message: "Which Item would you like to remove?",
+			name: "removeItem",
+			type: "list",
+			// the choices are from the current shopping list
+			choices: function () {
+				var returnItems = [];
+				for (var i = 0; i < shoppingCart.length; i++) {
+					returnItems.push(shoppingCart[i].product_name);
+				}
+				return returnItems;
+			}
+		})
+			.then(function (removeQ) {
+				// loop through the shopping cart to compare the .product name against the selection for the remove item, then use the hoisted function to remove the item at the iteration
+				for (var i = 0; i < shoppingCart.length; i++) {
+					var sC = shoppingCart[i];
+					if (sC.product_name === removeQ.removeItem) {
+						shoppingCart.remove(i);
+						console.log("Removed " + sC.purchaseQTY + " " + sC.product_name + " From the Cart.")
+					}
+				}
+				// get more input from the user
+				nextAction();
+			})
+	}
+	// if there are no items in shoppingCart, redirect the user
+	else {
+		console.log("We can't remove items since your cart is empty");
+		nextAction();
+	}
 }
 
-cancelItem
-	// then we will run a new inquirer prompt off the answer, using data from the first inquirer prompt and data validation from joi
-// 	}.then(inquirer.prompt(answers, 
 // function that removes the item from the array at the index point requested.
-Array.prototype.remove = function(from, to) {
-  var rest = this.slice((to || from) + 1 || this.length);
-  this.length = from < 0 ? this.length + from : from;
-  return this.push.apply(this, rest);
+Array.prototype.remove = function (from, to) {
+	var rest = this.slice((to || from) + 1 || this.length);
+	this.length = from < 0 ? this.length + from : from;
+	return this.push.apply(this, rest);
 };
 
-function nextAction();
-
-// 		connection.query("SELECT * FROM bamazon_products WHERE ? like ?", function (error, results){
-// 		[{product_name: answer.item}],
-// 		function (error){
-// 			return (console.log("There was an error with your choice: " + error))
-// 		};
-// return productChoice;
-// 	}
-
-// that takes the answers and then plugs them into the json object
-
-// first ask if they are a manager or customer
-
-// then provide list of options for customer or manager based on if statements
-
-// app user  selects action and then selects an object from the db (placeholder array?)
-
-// that then updates the mySQL stuff based on action taken and item selected and calls the original function so it is recursive
+function alterItem() {
+	// if there are any items in the shoppingCart Array
+	if (shoppingCart.length > 0) {
+		// prompt to figure out what item they want to remove 
+		inquirer.prompt([{
+			message: "Which Item would you like to alter the quantity of?",
+			name: "alterItem",
+			type: "list",
+			// the choices are from the current shopping list
+			choices: function () {
+				var returnItems = [];
+				for (var i = 0; i < shoppingCart.length; i++) {
+					returnItems.push(shoppingCart[i].product_name);
+				}
+				return returnItems;
+			}
+		},
+		{
+			message: "How many would you like to order instead?",
+			name: "newQTY",
+			type: "input",
+			validate: function (purchaseQTY) {
+				// use the Joi APY to validate that the input is a number, more than 1 and no less than the stock qty
+				var valid;
+				Joi.validate(purchaseQTY, Joi.number().required().min(1), function (validateError, val) {
+					if (validateError) {
+						console.log(validateError.message);
+						valid = validateError.message;
+					}
+					else {
+						valid = true;
+					}
+				})
+				return valid;
+			}
+		}
+		])
+			.then(function (alterQ) {
+// loop through the shopping cart array until you find a product_name match for the alterQ data
+				for (var i = 0; i < shoppingCart.length; i++) {
+					var sC = shoppingCart[i];
+					if (sC.product_name === alterQ.alterItem) {
+						if (sC.maxQTY < alterQ.newQTY){
+							console.log("You are trying to order more items than are available.  \nYou tried to order " + alterQ.newQTY + " and there are only " + sC.maxQTY + " available.")
+							return nextAction();
+						}
+					}
+				}
+				// get more input from the user
+				nextAction();
+			})
+	}
+	// if there are no items in shoppingCart, redirect the user
+	else {
+		console.log("We can't alter items in your cart because your cart is empty");
+		nextAction();
+	}
+}
