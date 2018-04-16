@@ -9,6 +9,14 @@ var shoppingCart = [];
 var chosenItem = "";
 var cartPrice = 0;
 
+function initializeValues() {
+	choiceArray = [];
+	dbArray = [];
+	shoppingCart = [];
+	chosenItem = "";
+	cartPrice = 0;
+}
+
 // mySql connection so we can use the database we are referencing.
 var connection = mysql.createConnection({
 	host: "localhost",
@@ -22,6 +30,8 @@ var connection = mysql.createConnection({
 	database: "bamazon_DB"
 });
 // this boots up the functions at the start of the node app
+console.log("WELCOME TO THE BAMAZON STORE!")
+initializeValues();
 start();
 
 
@@ -46,8 +56,19 @@ function start() {
 				chosenItem = "";
 				// populate the choice array with the results from our query using Item Name, then use that as our selection list for inquirer
 				for (var i = 0; i < results.length; i++) {
-					dbArray.push(results[i]);
-					choiceArray.push(results[i].product_name);
+					// using a placeholder variable that checks in the shoppingCart for the name 
+					var found = false;
+					for (var i = 0; i < shoppingCart.length; i++) {
+						if (results[i].product_name == shoppingCart[i].product_name) {
+							found = true;
+							break;
+						}
+					}
+					// select only items that are in stock and not in the cart already
+					if (results[i].STOCK_QTY === 0 || results.product_name === found) {
+						dbArray.push(results[i]);
+						choiceArray.push(results[i].product_name);
+					}
 				}
 				return choiceArray;
 			}
@@ -67,7 +88,7 @@ function start() {
 						name: "purchaseQTY",
 						type: "input",
 						validate: function (purchaseQTY) {
-							// use the Joi APY to validate that the input is a number, more than 1 and no less than the stock qty
+							// use the Joi APY to validate that the input is a number, more than 1 and no less than the stock qty.  var valid allows us to use inquirer for data validation
 							var valid;
 							Joi.validate(purchaseQTY, Joi.number().required().min(1).max(parseInt(chosenItem.STOCK_QTY)), function (validateError, val) {
 								if (validateError) {
@@ -82,13 +103,14 @@ function start() {
 						}
 					}
 				).then(function (answer) {
-					// we then push the shopping cart with the item and the purchase qty and update the cartPrice tool
+					// we then push the shopping cart with the item and the purchase qty and update the cartPrice 
 					cartPrice += (chosenItem.PRICE_CUSTOMER * answer.purchaseQTY);
 					shoppingCart.push({
 						product_name: chosenItem.product_name,
 						purchaseQTY: parseInt(answer.purchaseQTY),
 						price_customer: parseFloat(chosenItem.PRICE_CUSTOMER),
-						maxQTY: parseInt(chosenItem.STOCK_QTY)
+						maxQTY: parseInt(chosenItem.STOCK_QTY),
+						item_id: chosenItem.item_id
 					});
 					// and inquire what the user wants to do next.
 					nextAction();
@@ -149,8 +171,7 @@ function shoppingCartConfirm() {
 		})
 };
 
-function checkoutFunction() {
-	// loop through the items in the shoppingCart array and log out the 
+function printCart() {
 	console.log("ALL ITEMS IN SHOPPING CART");
 	console.log("-----------------------------")
 	for (var i = 0; i < shoppingCart.length; i++) {
@@ -161,6 +182,11 @@ function checkoutFunction() {
 		console.log("-----------------------------");
 	}
 	console.log("TOTAL PRICE OF CART : $" + parseFloat(cartPrice));
+}
+
+function checkoutFunction() {
+	// loop through the items in the shoppingCart array and log out the 
+	printCart();
 	verifyCheckout();
 }
 // checkout function
@@ -176,14 +202,17 @@ function verifyCheckout() {
 				if (checkoutAnswer.verify) {
 					console.log("$" + cartPrice + " ORDER CONFIRMED WITH " + shoppingCart.length + "ITEMS");
 					// loop through shopping cart items and update the item quantities in mySQL database
-
-
-
-					console.log("THANK YOU FOR YOUR BUSINESS, SESSION TERMINATED");
-
-					return connection.end();
+					for (var i = 0; i < shoppingCart.length; i++) {
+						updateSQL(shoppingCart[i]);
+					};
+					// print out the items in the cart
+					printCart();
+					// thank them for their business
+					console.log("THANK YOU FOR YOUR BUSINESS, NEW ORDER STARTED");
+					// clear the arrays
+					initializeValues();
+					return nextAction();
 				}
-				nextAction();
 			})
 	} else {
 		console.log("Your shopping cart is empty, you can't check out at this time.");
@@ -213,6 +242,8 @@ function removeItem() {
 				for (var i = 0; i < shoppingCart.length; i++) {
 					var sC = shoppingCart[i];
 					if (sC.product_name === removeQ.removeItem) {
+						// subtract the cost of the items from the cartPrice
+						cartPrice -= (sC.purchaseQTY * sC.price_customer);
 						shoppingCart.remove(i);
 						console.log("Removed " + sC.purchaseQTY + " " + sC.product_name + " From the Cart.")
 					}
@@ -257,7 +288,7 @@ function alterItem() {
 			name: "newQTY",
 			type: "input",
 			validate: function (purchaseQTY) {
-				// use the Joi APY to validate that the input is a number, more than 1 and no less than the stock qty
+				// use the Joi APY to validate that the input is a number and more than 1 
 				var valid;
 				Joi.validate(purchaseQTY, Joi.number().required().min(1), function (validateError, val) {
 					if (validateError) {
@@ -273,16 +304,18 @@ function alterItem() {
 		}
 		])
 			.then(function (alterQ) {
-// loop through the shopping cart array until you find a product_name match for the alterQ data
+				// loop through the shopping cart array until you find a product_name match for the alterQ data
 				for (var i = 0; i < shoppingCart.length; i++) {
 					var sC = shoppingCart[i];
 					if (sC.product_name === alterQ.alterItem) {
-						if (sC.maxQTY < alterQ.newQTY){
+						// if they are trying to order more than the existing stock, then direct them to do otherwise
+						if (sC.maxQTY < alterQ.newQTY) {
 							console.log("You are trying to order more items than are available.  \nYou tried to order " + alterQ.newQTY + " and there are only " + sC.maxQTY + " " + sC.product_name + " available.  Process terminated.")
 							return nextAction();
 						}
-						 sC.purchaseQTY = alterQ.newQTY;
-						 console.log(sC);
+						// update the purchaseQTY property at the object at the iteration
+						sC.purchaseQTY = alterQ.newQTY;
+						cartPrice -= (sC.purchaseQTY * sC.price_customer);
 					}
 				}
 				// get more input from the user
@@ -294,4 +327,17 @@ function alterItem() {
 		console.log("We can't alter items in your cart because your cart is empty");
 		nextAction();
 	}
+};
+
+function updateSQL(item) {
+	var newQTY = (item.maxQTY - item.purchaseQTY);
+	console.log("newQTY", newQTY)
+	console.log("product_name", item.product_name);
+	var queryURL = "UPDATE bamazon_products SET STOCK_QTY =  " + newQTY + " WHERE item_id = " + item.item_id;
+	connection.query(queryURL, function (error, results) {
+		if (error) {
+			return console.log('error!!')
+			console.log(results)
+		}
+	})
 };
