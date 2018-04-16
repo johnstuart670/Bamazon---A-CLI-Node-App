@@ -30,8 +30,7 @@ var connection = mysql.createConnection({
 	database: "bamazon_DB"
 });
 // this boots up the functions at the start of the node app
-console.log("WELCOME TO THE BAMAZON STORE!")
-initializeValues();
+console.log("WELCOME TO THE BAMAZON STORE!");
 start();
 
 
@@ -56,16 +55,8 @@ function start() {
 				chosenItem = "";
 				// populate the choice array with the results from our query using Item Name, then use that as our selection list for inquirer
 				for (var i = 0; i < results.length; i++) {
-					// using a placeholder variable that checks in the shoppingCart for the name 
-					var found = false;
-					for (var i = 0; i < shoppingCart.length; i++) {
-						if (results[i].product_name == shoppingCart[i].product_name) {
-							found = true;
-							break;
-						}
-					}
 					// select only items that are in stock and not in the cart already
-					if (results[i].STOCK_QTY === 0 || results.product_name === found) {
+					if (results[i].STOCK_QTY > 0) {
 						dbArray.push(results[i]);
 						choiceArray.push(results[i].product_name);
 					}
