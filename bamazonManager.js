@@ -39,7 +39,7 @@ function startManager() {
 		message: "What would you like to do?",
 		name: "command",
 		type: "list",
-		choices: ["View Products for Sale", "View Low Inventory", "Add to Inventory", "Add New Product", "Modify Task", "Complete Manager Transaction(s)"]
+		choices: ["View Products for Sale", "View Low Inventory", "Add to Stock", "Add New Product", "Modify Task", "Complete Manager Transaction(s)"]
 	}).then(function (answers) {
 		// then route the 
 		switch (answers.command) {
@@ -49,11 +49,12 @@ function startManager() {
 			case "View Low Inventory":
 				{ surveyLow() }
 				break;
-			case "Add to Inventory":
+			case "Add to Stock":
 				{ addQTY(); }
 				break;
 			case "Add New Product":
-				{ addNewProduct(); }
+				{ console.log("WHY ISN'T IT WORKING")
+					addNewProduct(); }
 				break;
 			case "Complete Manager Transaction(s)":
 				{ startCheckout() }
@@ -95,43 +96,66 @@ function surveyLow() {
 	startManager();
 };
 
-function addNewProduct(){
+function addNewProduct() {
 	console.log("What item would you like to add?");
 	inquirer.prompt([
+		// question 1
 		{
 			message: "Item Name",
 			name: "itemName",
-			type: "input",
-			validate: function(){
-				var valid;
-							Joi.validate(purchaseQTY, Joi.string().required(), function (validateError, val) {
-								if (validateError) {
-									console.log(validateError.message);
-									valid = validateError.message;
-								}
-								else {
-									valid = true;
-								}
-							})
-							return valid;
-			}},
-			{
+			type: "input"
+
+		},
+		// question 2
+		{
 			message: "How many would you like to add?",
 			name: "itemQTY",
 			type: "input",
-			validate: function(){
-				var valid;
-							Joi.validate(purchaseQTY, Joi.number().min(1).required(), function (validateError, val) {
-								if (validateError) {
-									console.log(validateError.message);
-									valid = validateError.message;
-								}
-								else {
-									valid = true;
-								}
-							})
-							return valid;
-			}
-			}
-	])
+			filter: Number
+
+		},
+		// question 3
+		{
+			message: "What is the cost to the customer?",
+			name: "itemCost",
+			type: "input",
+			filter: Number
+		},
+		// question 4
+		{
+			message: "What is the cost to Bamazon?",
+			name: "supplierCost",
+			type: "input",
+			filter: Number
+		},
+		// question 5
+		{
+			message: "What is the department for this item?",
+			name: "itemDept",
+			type: "input",
+		},
+		// end questions
+	]).then(function (itemQs) {
+		// build a query URL that will be used to update the database?
+		// var queryURL = "INSERT INTO BAMAZON_PRODUCTS (PRODUCT_NAME, DEPARTMENT_NAME, PRICE_CUSTOMER, PRICE_TO_BAMAZON, STOCK_QTY) VALUES ?";
+		// var inserts = [itemQs.itemName, itemQs.itemDept, parseFloat(itemQs.itemCost), parseFloat(itemQs.supplierCost), parseInt(itemQs.itemQTY)];
+
+		// connect.query(queryURL, [inserts], function (err, result) {
+		// 	if (err) {
+		// 		return console.log(err)
+		// 	}
+			console.log("ADDED " + itemQs.itemName + " TO THE DATABASE");
+		// })
+	})
+};
+
+function validateInput(value) {
+	var integer = Number.isInteger(parseFloat(value));
+	var sign = Math.sign(value);
+
+	if (integer && (sign === 1)) {
+		return true;
+	} else {
+		return 'Please enter a whole non-zero number.';
+	}
 }
