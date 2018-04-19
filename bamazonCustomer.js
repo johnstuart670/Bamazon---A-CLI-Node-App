@@ -1,10 +1,27 @@
 
+// export the start function via node modules
+module.exports.startCustomer = start;
+
+
 // this boots up the functions at the start of the node app
 console.log("WELCOME TO THE BAMAZON STORE!");
 
 var inquirer = require("inquirer");
 var Joi = require("joi");
 var mysql = require("mysql");
+var cartPrice = 0;
+var choiceArray = [];
+var dbArray = [];
+var shoppingCart = [];
+
+function initializeValues() {
+	choiceArray = [];
+	dbArray = [];
+	shoppingCart = [];
+	chosenItem = "";
+	cartPrice = 0;
+}
+
 
 var connection = mysql.createConnection({
 	host: "localhost",
@@ -116,11 +133,11 @@ function nextAction() {
 					verifyCheckout();
 					break;
 				case "Alter Item Order Amount":
-				// go to the function that alters the shopping cart qty
+					// go to the function that alters the shopping cart qty
 					alterItem();
 					break;
 				case "Survey Cart":
-				// look at the cart
+					// look at the cart
 					checkoutFunction();
 					break;
 				default: console.log("how did you get here?")
@@ -145,7 +162,7 @@ function printCart() {
 }
 
 function checkoutFunction() {
-// print out the items from the cart and prompt if the user is ready to checkout
+	// print out the items from the cart and prompt if the user is ready to checkout
 	printCart();
 	verifyCheckout();
 }
@@ -160,7 +177,7 @@ function verifyCheckout() {
 			default: "Y"
 		})
 			.then(function (checkoutAnswer) {
-						// if the user confirms yes
+				// if the user confirms yes
 				if (checkoutAnswer.verify) {
 					console.log("$" + cartPrice + " ORDER CONFIRMED WITH " + shoppingCart.length + " ITEMS");
 					// loop through shopping cart items and update the item quantities in mySQL database
@@ -176,11 +193,12 @@ function verifyCheckout() {
 					// start a new order
 					return nextAction();
 				}
+				else {
+					console.log("Your shopping cart is empty, you can't check out at this time.");
+					nextAction();
+				}
 			})
-			// if there is nothing in the cart then redirect the user
-	} else {
-		console.log("Your shopping cart is empty, you can't check out at this time.");
-		nextAction();
+		// if there is nothing in the cart then redirect the user
 	}
 }
 // function that allows user to remove items from the array if there are items listed in it
@@ -306,5 +324,3 @@ function updateSQL(item) {
 		}
 	})
 };
-// export the start function via node modules
-module.exports.startCustomer = start;

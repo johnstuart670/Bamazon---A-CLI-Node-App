@@ -19,6 +19,7 @@ var connection = mysql.createConnection({
 var dbArray = [];
 var chosenItem = "";
 var actionCart = [];
+var valid;
 
 function startManager() {
 	console.log("What would you like to do?")
@@ -39,7 +40,7 @@ function startManager() {
 		message: "What would you like to do?",
 		name: "command",
 		type: "list",
-		choices: ["View Products for Sale", "View Low Inventory", "Add to Stock", "Add New Product", "Modify Task", "Complete Manager Transaction(s)"]
+		choices: ["View Products for Sale", "View Low Inventory", "Change Stock", "Add New Product", "QUIT"]
 	}).then(function (answers) {
 		// then route the 
 		switch (answers.command) {
@@ -49,18 +50,18 @@ function startManager() {
 			case "View Low Inventory":
 				{ surveyLow() }
 				break;
-			case "Add to Stock":
+			case "Change Stock":
 				{ addQTY(); }
 				break;
 			case "Add New Product":
-				{ console.log("WHY ISN'T IT WORKING")
-					addNewProduct(); }
+				{
+					console.log("WHY ISN'T IT WORKING")
+					addNewProduct();
+				}
 				break;
-			case "Complete Manager Transaction(s)":
-				{ startCheckout() }
+			case "QUIT":
+				{ quitStart(); }
 				break;
-			case "Modify Task":
-				{ modifyTask(); }
 			default: console.log("How did you get here?")
 		}
 	})
@@ -93,69 +94,157 @@ function surveyLow() {
 			console.log("-----------------------------");
 		}
 	}
+	// start over
 	startManager();
 };
 
+// function to add to MYSQL
 function addNewProduct() {
 	console.log("What item would you like to add?");
 	inquirer.prompt([
 		// question 1
 		{
 			message: "Item Name",
-			name: "itemName",
-			type: "input"
+			name: "PRODUCT_NAME",
+			type: "input",
+			validate: function (response) {
+				valid = false;
+				validateString(response);
+				return valid;
+			}
+		},
 
+		{
+			message: "What is the department for this item?",
+			name: "DEPARTMENT_NAME",
+			type: "input",
+			validate: function (response) {
+				valid = false;
+				validateString(response);
+				return valid;
+			}
+		},
+
+		// question 3
+		{
+			message: "What is the cost to the customer?",
+			name: "PRICE_CUSTOMER",
+			type: "input",
+			validate: function (response) {
+				valid = false;
+				validateNumber(response);
+				return valid;
+			}
+		},
+		{
+			message: "What is the cost to Bamazon?",
+			name: "PRICE_TO_BAMAZON",
+			type: "input",
+			validate: function (response) {
+				valid = false;
+				validateNumber(response);
+				return valid;
+			}
 		},
 		// question 2
 		{
 			message: "How many would you like to add?",
-			name: "itemQTY",
+			name: "STOCK_QTY",
 			type: "input",
-			filter: Number
+			validate: function (response) {
+				valid = false;
+				validateNumber(response);
+				return valid;
+			}
+		},
 
-		},
-		// question 3
-		{
-			message: "What is the cost to the customer?",
-			name: "itemCost",
-			type: "input",
-			filter: Number
-		},
-		// question 4
-		{
-			message: "What is the cost to Bamazon?",
-			name: "supplierCost",
-			type: "input",
-			filter: Number
-		},
-		// question 5
-		{
-			message: "What is the department for this item?",
-			name: "itemDept",
-			type: "input",
-		},
-		// end questions
 	]).then(function (itemQs) {
 		// build a query URL that will be used to update the database?
-		// var queryURL = "INSERT INTO BAMAZON_PRODUCTS (PRODUCT_NAME, DEPARTMENT_NAME, PRICE_CUSTOMER, PRICE_TO_BAMAZON, STOCK_QTY) VALUES ?";
-		// var inserts = [itemQs.itemName, itemQs.itemDept, parseFloat(itemQs.itemCost), parseFloat(itemQs.supplierCost), parseInt(itemQs.itemQTY)];
+		var queryURL = "INSERT INTO BAMAZON_PRODUCTS SET ?"
+				// connect to the database, use the queryURL and pass in the JSON object from the itemQs information
+		connection.query(queryURL, itemQs, function (err, result) {
+			if (err) {
+				return console.log(err)
+			}
+			// some nice context
+			console.log("ADDED " + itemQs.PRODUCT_NAME + " TO THE DATABASE");
+		})
+		startManager();
 
-		// connect.query(queryURL, [inserts], function (err, result) {
-		// 	if (err) {
-		// 		return console.log(err)
-		// 	}
-			console.log("ADDED " + itemQs.itemName + " TO THE DATABASE");
-		// })
 	})
 };
 
-function validateInput(value) {
-	var integer = Number.isInteger(parseFloat(value));
-	var sign = Math.sign(value);
-
-	if (integer && (sign === 1)) {
-		return true;
-	} else {
-		return 'Please enter a whole non-zero number.';
+function addQTY(){
+inquirer.prompt([{
+	message: "What item would you like to alter the stock of?",
+	name: "PRODUCT_NAME",
+	type: "list",
+	choices: function () {
+	  returnItems = [];
+		for (var i = 0; i < dbArray.length; i++) {
+			returnItems.push(dbArray[i].product_name);
+		}
+		return returnItems;
 	}
+},
+	{
+	message: "What would you like to set the new quantity to?",
+	name: "STOCK_QTY",
+	type: "input",
+	validate: function (input){
+		valid = false;
+		validateNumber(input);
+		return valid;
+	}}
+]).then( function(updateQ){
+	var queryURL = "UPDATE BAMAZON_PRODUCTS SET ? WHERE ? ";
+connection.query(queryURL, updateQ
+, function (results, error){
+	if (error){
+		return console.log("ERROR: " + error)
+	}
+	console.log("WE UPDATED THE QTY OF " + updateQ.PRODUCT_NAME + " TO " + updateQ.STOCK_QTY)
+startManager();
+})
+})};
+
+function quitStart(){
+	 inquirer.prompt({
+		 message: "Are you ready to Quit?",
+		 name: "quitConfirm",
+		 type: "confirm",
+		 default: "Y"
+	 }).then( function (quitAnswer){
+		 if (quitAnswer.quitConfirm)
+
+			{console.log("Thanks for maintaining the system!")
+				return  connection.end()
+			}
+			startManager();
+	 })
 }
+
+function validateNumber(response) {
+	valid = false;
+	Joi.validate(response, Joi.number().min(1).required(), function (validateError, val) {
+		if (validateError) {
+			console.log(validateError.message);
+			valid = validateError.message;
+		}
+		else {
+			valid = true;
+		}
+	})
+};
+
+function validateString(response) {
+	Joi.validate(response, Joi.string().required(), function (validateError, val) {
+		if (validateError) {
+			console.log(validateError.message);
+			valid = validateError.message;
+		}
+		else {
+			valid = true;
+		}
+	})
+};

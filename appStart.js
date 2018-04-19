@@ -10,15 +10,8 @@ var choiceArray = [];
 var dbArray = [];
 var shoppingCart = [];
 var chosenItem = "";
-var cartPrice = 0;
 
-function initializeValues() {
-	choiceArray = [];
-	dbArray = [];
-	shoppingCart = [];
-	chosenItem = "";
-	cartPrice = 0;
-}
+
 
 appStart();
 function appStart(){
