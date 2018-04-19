@@ -55,7 +55,6 @@ function startManager() {
 				break;
 			case "Add New Product":
 				{
-					console.log("WHY ISN'T IT WORKING")
 					addNewProduct();
 				}
 				break;
@@ -217,7 +216,7 @@ function quitStart(){
 	 }).then( function (quitAnswer){
 		 if (quitAnswer.quitConfirm)
 
-			{console.log("Thanks for maintaining the system!")
+			{console.log("Thanks and have a great shift!")
 				return  connection.end()
 			}
 			startManager();
