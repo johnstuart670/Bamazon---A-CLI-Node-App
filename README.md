@@ -26,4 +26,4 @@ Bamazon is a Node CLI App utilizing the following:
 ###Instructions to run Bamazon:
 Please view the run video below on instructions and demonstrations of functionality:
 
-[Here is a link to my local video](Bamazon_example.mov)
+[Please download the example video here](Bamazon_example.mov)

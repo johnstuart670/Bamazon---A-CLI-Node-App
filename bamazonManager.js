@@ -174,9 +174,18 @@ function addNewProduct() {
 };
 
 function addQTY(){
-inquirer.prompt([{
+inquirer.prompt([
+	{
+		message: "What would you like to set the new quantity to?",
+		name: "STOCK_QTY",
+		type: "input",
+		validate: function (input){
+			valid = false;
+			validateNumber(input);
+			return valid;
+		}},{
 	message: "What item would you like to alter the stock of?",
-	name: "PRODUCT_NAME",
+	name: "product_name",
 	type: "list",
 	choices: function () {
 	  returnItems = [];
@@ -185,24 +194,15 @@ inquirer.prompt([{
 		}
 		return returnItems;
 	}
-},
-	{
-	message: "What would you like to set the new quantity to?",
-	name: "STOCK_QTY",
-	type: "input",
-	validate: function (input){
-		valid = false;
-		validateNumber(input);
-		return valid;
-	}}
+}
+	
 ]).then( function(updateQ){
-	var queryURL = "UPDATE BAMAZON_PRODUCTS SET ? WHERE ? ";
-connection.query(queryURL, updateQ
-, function (results, error){
+	var queryURL = "UPDATE bamazon_products SET STOCK_QTY = '" + updateQ.STOCK_QTY + "' WHERE PRODUCT_NAME = '" +updateQ.product_name + "';";
+connection.query(queryURL, function (error, results){
 	if (error){
-		return console.log("ERROR: " + error)
+		return console.log("ERROR: " + JSON.stringify(error))
 	}
-	console.log("WE UPDATED THE QTY OF " + updateQ.PRODUCT_NAME + " TO " + updateQ.STOCK_QTY)
+	console.log("WE UPDATED THE QTY OF " + updateQ.product_name + " TO " + updateQ.STOCK_QTY)
 startManager();
 })
 })};
